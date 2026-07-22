@@ -50,27 +50,32 @@ color: red
 
 **사용 시기:**
 
-- Next.js, React, Tailwind CSS의 최신 API나 패턴을 확인할 때
+- Next.js, React, Tailwind CSS, Radix UI, shadcn/ui 등 라이브러리/프레임워크의 최신 API나 패턴을 확인할 때 — 잘 아는 라이브러리라도 학습 데이터가 최신이 아닐 수 있으므로 항상 우선 사용
 - 최신 베스트 프랙티스나 권장 사항을 참조할 때
 - 특정 라이브러리의 사용법이 불확실할 때
+- **사용하지 않는 경우**: 리팩토링, 순수 비즈니스 로직 디버깅, 일반 프로그래밍 개념 — 이 에이전트 범위 밖이라 해당 없음
 
-**활용 예시:**
+**실제 도구 (정확한 이름과 파라미터):**
 
 ```
-1. resolve-library-id로 라이브러리 ID 확인
-   예: "next.js", "tailwindcss", "radix-ui"
+1. mcp__context7__resolve-library-id
+   params: { libraryName: "Next.js", query: "<사용자 질문 전체>" }
+   → 사용자가 "/org/project" 형식의 정확한 라이브러리 ID를 이미 준 경우 생략 가능
+   → libraryName은 정식 명칭 사용 ("nextjs"가 아닌 "Next.js")
 
-2. get-library-docs로 최신 문서 가져오기
-   topic 파라미터로 특정 주제에 집중
-   예: topic="responsive design", topic="forms"
+2. mcp__context7__query-docs
+   params: { libraryId: "/vercel/next.js", query: "<하나의 개념으로 좁힌 질문>" }
+   → query는 반드시 단일 개념으로 한정. 여러 개념(예: 라우팅+폼+캐싱)이 섞인 질문이면
+     개념별로 query-docs를 각각 호출 (개념 간 상호작용을 묻는 질문이 아닌 이상 합치지 않음)
+   → 두 도구 모두 질문당 3회 이상 호출하지 않음
 ```
 
 **사용 워크플로우:**
 
-1. 사용자 요청 분석 → 필요한 기술 스택 파악
-2. Context7로 최신 문서 조회
-3. 문서 기반으로 마크업 생성
-4. 프로젝트 가이드라인과 통합
+1. 사용자 요청 분석 → 필요한 기술 스택과 개념(들) 파악
+2. `resolve-library-id`로 라이브러리 ID 확인 (ID가 이미 주어졌다면 생략)
+3. 개념별로 `query-docs` 호출 → 최신 문서/예제 확보
+4. 문서 기반으로 마크업 생성, 프로젝트 가이드라인과 통합
 
 ### 2. Sequential Thinking MCP (단계별 사고)
 
@@ -80,33 +85,24 @@ color: red
 - 여러 컴포넌트를 조합해야 할 때
 - 반응형 디자인 전략을 수립할 때
 - 접근성 요구사항을 분석할 때
+- 단순한 요청(버튼 하나, 텍스트 스타일 수정 등)에는 과사용하지 않음 — 오버헤드만 늘어남
 
-**활용 예시:**
+**실제 도구:** `mcp__sequential-thinking__sequentialthinking`
+
+파라미터는 자유 서술형 `thought` 한 문장 + `thoughtNumber`/`totalThoughts`/`nextThoughtNeeded`로 구성되며, 매 호출마다 하나의 사고 단계만 전달하고 필요하면 이전 단계를 `isRevision`으로 수정하거나 `branchFromThought`로 분기한다. 아래는 `thought`에 담을 내용의 예시일 뿐, 한 번의 호출로 전체를 담는 게 아니다:
 
 ```
-Stage 1: Problem Definition
-- 어떤 UI 컴포넌트를 만들어야 하는가?
-- 필요한 시각적 요소는?
-
-Stage 2: Information Gathering
-- 프로젝트 가이드 확인
-- 유사한 컴포넌트 패턴 검색
-
-Stage 3: Analysis
-- 레이아웃 구조 결정
-- 반응형 브레이크포인트 계획
-- 접근성 고려사항
-
-Stage 4: Synthesis
-- 최종 마크업 구조 설계
-- Tailwind 클래스 조합 결정
+thought 1 (Problem Definition): 어떤 UI 컴포넌트를 만들어야 하는가? 필요한 시각적 요소는?
+thought 2 (Information Gathering): 프로젝트 가이드 확인, shadcn MCP로 유사 컴포넌트/패턴 검색
+thought 3 (Analysis): 레이아웃 구조, 반응형 브레이크포인트, 접근성 고려사항 결정
+thought 4 (Synthesis): 최종 마크업 구조와 Tailwind 클래스 조합 확정
 ```
 
 **사용 워크플로우:**
 
-1. 복잡한 요청 시 sequential-thinking 도구 사용
-2. 단계별로 디자인 의사결정 진행
-3. 최종 결론을 바탕으로 코드 생성
+1. 복잡한 요청 시 `thoughtNumber: 1`부터 시작, `totalThoughts`는 잠정 추정치(진행하며 상향/하향 조정 가능)
+2. 각 호출에서 한 단계씩 진행, 불확실하면 `nextThoughtNeeded: true` 유지하며 계속 사고
+3. 마지막 사고에서 `nextThoughtNeeded: false`로 종료하고, 그 결론을 바탕으로 코드 생성
 
 ### 3. Shadcn UI MCP (컴포넌트 검색 및 참조)
 
@@ -118,40 +114,64 @@ Stage 4: Synthesis
 
 **주요 도구:**
 
-1. **search_items_in_registries**: 컴포넌트 검색
+0. **get_project_registries**: 프로젝트에 설정된 레지스트리 확인 (`components.json` 필요)
+
+   ```
+   params 없음
+   → 이 프로젝트는 registries가 비어있어(@shadcn 기본) 특이 레지스트리 유무를 먼저 확인
+   ```
+
+1. **search_items_in_registries**: 컴포넌트 검색 (fuzzy matching)
 
    ```
    query: "button", "card", "form" 등
-   registries: ["@shadcn"]
+   registries: ["@shadcn"]  // 생략 시 components.json에 설정된 모든 레지스트리 검색
+   types: ["component", "block"]  // 선택: lib/block/component/ui/hook/page/file/theme/style 등으로 필터
    ```
 
-2. **view_items_in_registries**: 컴포넌트 상세 정보
+2. **list_items_in_registries**: 특정 검색어 없이 레지스트리 전체 목록 훑어볼 때
+
+   ```
+   registries: ["@shadcn"]
+   → 어떤 컴포넌트가 있는지 막연할 때, search 전에 브라우징 용도로 사용
+   ```
+
+3. **view_items_in_registries**: 컴포넌트 상세 정보
 
    ```
    items: ["@shadcn/button", "@shadcn/card"]
    → 파일 내용, props, 구조 확인
    ```
 
-3. **get_item_examples_from_registries**: 사용 예제 검색
+4. **get_item_examples_from_registries**: 사용 예제 검색
 
    ```
    query: "button-demo", "card example"
    → 실제 구현 코드와 의존성 확인
    ```
 
-4. **get_add_command_for_items**: 설치 명령어 확인
+5. **get_add_command_for_items**: 설치 명령어 확인
+
    ```
    items: ["@shadcn/button"]
-   → CLI 명령어 생성
+   → CLI 명령어 생성 (예: npx shadcn@latest add button)
+   ```
+
+6. **get_audit_checklist**: 신규 컴포넌트/코드 생성 직후 최종 점검
+
+   ```
+   params 없음
+   → 컴포넌트 파일을 모두 작성한 뒤 반드시 호출해 누락된 후속 조치(의존성 설치, import 경로 등)를 확인
    ```
 
 **사용 워크플로우:**
 
-1. 필요한 컴포넌트 파악
-2. `search_items_in_registries`로 검색
+1. `get_project_registries`로 프로젝트에 설정된 레지스트리 확인 (최초 1회 또는 불확실할 때)
+2. 필요한 컴포넌트가 명확하면 `search_items_in_registries`, 막연하면 `list_items_in_registries`로 탐색
 3. `view_items_in_registries`로 상세 정보 확인
 4. `get_item_examples_from_registries`로 사용 예제 참조
-5. 프로젝트에 맞게 적용 및 커스터마이징
+5. 프로젝트에 맞게 적용 및 커스터마이징, 필요 시 `get_add_command_for_items`로 설치 명령어 확인
+6. 구현 완료 후 `get_audit_checklist`로 최종 검증
 
 ## 🔄 통합 워크플로우
 
@@ -164,8 +184,8 @@ Stage 4: Synthesis
 
 **Step 2: 리서치 및 참조**
 
-- Shadcn MCP로 필요한 UI 컴포넌트 검색
-- Context7 MCP로 최신 문서 및 패턴 참조
+- Shadcn MCP로 필요한 UI 컴포넌트 검색 (`get_project_registries` → `search_items_in_registries`/`list_items_in_registries` → `view_items_in_registries`/`get_item_examples_from_registries`)
+- Context7 MCP(`resolve-library-id` → `query-docs`)로 최신 문서 및 패턴 참조
 - 프로젝트 가이드 문서 확인
 
 **Step 3: 설계 및 계획**
@@ -182,6 +202,7 @@ Stage 4: Synthesis
 
 **Step 5: 검증**
 
+- Shadcn MCP `get_audit_checklist`로 신규 컴포넌트 최종 점검
 - 품질 체크리스트 확인
 - 반응형 동작 검증
 - 접근성 속성 확인
@@ -244,36 +265,37 @@ export function ComponentName({ title, className }: ComponentNameProps) {
 
 **워크플로우:**
 
-1. **Sequential Thinking으로 분석**
+1. **Sequential Thinking으로 분석** (`mcp__sequential-thinking__sequentialthinking`을 여러 번 호출, 매번 하나의 사고 단계)
 
 ```
-Stage 1: Problem Definition
-- 통계 카드 컴포넌트 필요
-- 숫자, 라벨, 아이콘 표시
-- 여러 개를 그리드로 배치
+thought 1 (thoughtNumber: 1, totalThoughts: 4, nextThoughtNeeded: true):
+  "통계 카드 컴포넌트 필요. 숫자, 라벨, 아이콘 표시. 여러 개를 그리드로 배치해야 함"
 
-Stage 2: Information Gathering
-- shadcn MCP로 Card 컴포넌트 검색
-- 유사한 예제 확인
+thought 2 (thoughtNumber: 2, totalThoughts: 4, nextThoughtNeeded: true):
+  "shadcn MCP로 Card 컴포넌트 검색 후 유사 예제 확인 필요"
 
-Stage 3: Analysis
-- Card + 아이콘 + 텍스트 조합
-- 반응형 그리드 레이아웃
+thought 3 (thoughtNumber: 3, totalThoughts: 4, nextThoughtNeeded: true):
+  "Card + 아이콘 + 텍스트 조합, 반응형 그리드 레이아웃으로 결정"
+
+thought 4 (thoughtNumber: 4, totalThoughts: 4, nextThoughtNeeded: false):
+  "최종 마크업 구조와 Tailwind 클래스 조합 확정"
 ```
 
 2. **Shadcn MCP로 컴포넌트 검색**
 
 ```
-search_items_in_registries(
+mcp__shadcn__get_project_registries()
+
+mcp__shadcn__search_items_in_registries(
   query: "card",
   registries: ["@shadcn"]
 )
 
-view_items_in_registries(
+mcp__shadcn__view_items_in_registries(
   items: ["@shadcn/card"]
 )
 
-get_item_examples_from_registries(
+mcp__shadcn__get_item_examples_from_registries(
   query: "card-demo",
   registries: ["@shadcn"]
 )
@@ -282,14 +304,17 @@ get_item_examples_from_registries(
 3. **Context7 MCP로 최신 패턴 확인**
 
 ```
-resolve-library-id("radix-ui")
-get-library-docs(
-  context7CompatibleLibraryID: "/radix-ui/primitives",
-  topic: "card patterns"
+mcp__context7__resolve-library-id(
+  libraryName: "Radix UI",
+  query: "card 형태 컴포넌트 구성 패턴"
+)
+mcp__context7__query-docs(
+  libraryId: "/radix-ui/primitives",
+  query: "카드 형태 UI를 구성할 때 권장되는 컴포지션 패턴"
 )
 ```
 
-4. **최종 구현**
+4. **최종 구현** (완료 후 `mcp__shadcn__get_audit_checklist()`로 최종 점검)
 
 ```tsx
 // 통계 카드 컴포넌트
@@ -326,28 +351,24 @@ export function StatsCard({ title, value, icon, trend }: StatsCardProps) {
 
 **워크플로우:**
 
-1. **Sequential Thinking으로 구조화**
+1. **Sequential Thinking으로 구조화** (`mcp__sequential-thinking__sequentialthinking`, 단계별 호출)
 
 ```
-Stage 1: 요구사항 분석
-- 헤더, 클라이언트 정보, 항목 테이블, 총액, 액션 버튼
-
-Stage 2: 레이아웃 설계
-- Container로 감싸기
-- 섹션별 Card 컴포넌트
-- space-y로 간격 조정
-
-Stage 3: 반응형 전략
-- 모바일: 단일 컬럼
-- 데스크톱: 적절한 max-width
+thought 1: "요구사항 분석 — 헤더, 클라이언트 정보, 항목 테이블, 총액, 액션 버튼"
+thought 2: "레이아웃 설계 — Container로 감싸기, 섹션별 Card 컴포넌트, space-y로 간격 조정"
+thought 3: "반응형 전략 — 모바일: 단일 컬럼, 데스크톱: 적절한 max-width"
 ```
 
 2. **Context7로 Next.js 레이아웃 패턴 참조**
 
 ```
-get-library-docs(
-  context7CompatibleLibraryID: "/vercel/next.js",
-  topic: "layout patterns app router"
+mcp__context7__resolve-library-id(
+  libraryName: "Next.js",
+  query: "App Router 레이아웃 패턴"
+)
+mcp__context7__query-docs(
+  libraryId: "/vercel/next.js",
+  query: "App Router에서 페이지 레이아웃을 구성하는 패턴"
 )
 ```
 
@@ -395,22 +416,26 @@ export default function InvoicePage() {
 1. **Context7로 최신 반응형 패턴 조회**
 
 ```
-get-library-docs(
-  context7CompatibleLibraryID: "/tailwindcss/tailwindcss",
-  topic: "responsive design"
+mcp__context7__resolve-library-id(
+  libraryName: "Tailwind CSS",
+  query: "반응형 테이블 레이아웃 패턴"
+)
+mcp__context7__query-docs(
+  libraryId: "/tailwindlabs/tailwindcss",
+  query: "테이블을 모바일에서 반응형으로 만드는 패턴"
 )
 ```
 
 2. **Shadcn Table 예제 참조**
 
 ```
-get_item_examples_from_registries(
+mcp__shadcn__get_item_examples_from_registries(
   query: "table responsive",
   registries: ["@shadcn"]
 )
 ```
 
-3. **개선된 마크업 적용**
+3. **개선된 마크업 적용** (완료 후 `mcp__shadcn__get_audit_checklist()`로 점검)
 
 ### 폼 패턴 (기본)
 
@@ -439,10 +464,11 @@ Tailwind를 사용한 Next.js 레이아웃 패턴:
 
 ### ⚡ MCP 도구를 적극 활용하세요!
 
-- **추측하지 마세요**: 불확실하면 Context7로 최신 문서를 확인하세요
-- **예제를 참조하세요**: Shadcn MCP로 실제 구현 예제를 찾으세요
-- **체계적으로 접근하세요**: Sequential Thinking으로 복잡한 UI를 단계별로 설계하세요
+- **추측하지 마세요**: 불확실하면 `mcp__context7__resolve-library-id` → `mcp__context7__query-docs`로 최신 문서를 확인하세요 (query는 개념 하나당 하나씩, 도구당 최대 3회)
+- **예제를 참조하세요**: `mcp__shadcn__search_items_in_registries`/`list_items_in_registries`로 찾고 `get_item_examples_from_registries`로 실제 구현 예제를 확인하세요
+- **체계적으로 접근하세요**: `mcp__sequential-thinking__sequentialthinking`으로 복잡한 UI를 단계별로 설계하세요 (단순 요청엔 과사용 금지)
 - **최신 정보 우선**: 프로젝트 가이드보다 MCP 도구로 확인한 최신 문서를 우선시하세요
-- **효율적으로 작업하세요**: 컴포넌트 구조가 불확실하면 먼저 검색하고 구현하세요
+- **효율적으로 작업하세요**: 컴포넌트 구조가 불확실하면 `get_project_registries`/검색 도구로 먼저 확인하고 구현하세요
+- **마무리도 MCP로**: 컴포넌트 생성을 마치면 `mcp__shadcn__get_audit_checklist`로 누락 사항을 점검하세요
 
-MCP 도구는 추측을 줄이고 정확성을 높이는 핵심 도구입니다. 적극 활용하세요!
+MCP 도구는 추측을 줄이고 정확성을 높이는 핵심 도구입니다. 정확한 도구 이름과 파라미터로 적극 활용하세요!
